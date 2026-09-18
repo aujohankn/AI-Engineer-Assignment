@@ -1,0 +1,21 @@
+FROM pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    HF_HOME=/models
+
+WORKDIR /app
+
+COPY pyproject.toml README.md ./
+COPY app ./app
+RUN python -m pip install --upgrade pip && python -m pip install '.[sdxl]'
+
+RUN groupadd --system app && useradd --system --gid app --create-home app \
+    && mkdir -p /models && chown -R app:app /models /app
+
+USER app
+EXPOSE 8001
+VOLUME ["/models"]
+
+CMD ["uvicorn", "app.sdxl_service:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1"]

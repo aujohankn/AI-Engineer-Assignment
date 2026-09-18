@@ -1,0 +1,89 @@
+services:
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - redis-data:/data
+
+  api:
+    build: .
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      ARTIFACT_ROOT: /data/jobs
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+    volumes:
+      - artifacts:/data/jobs
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: ["celery", "-A", "app.worker:celery_app", "worker", "--loglevel=INFO", "--concurrency=1"]
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      ARTIFACT_ROOT: /data/jobs
+      ARCHIVE_ROOT: /archive
+      IMAGE_PROVIDER: sdxl
+      EVALUATION_PROVIDER: local
+      SDXL_API_URL: http://sdxl:8001
+      SDXL_API_TIMEOUT_SECONDS: "600"
+    depends_on:
+      redis:
+        condition: service_healthy
+      sdxl:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.worker:celery_app inspect ping -d celery@$$HOSTNAME --timeout=5 | grep -q pong"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+    volumes:
+      - artifacts:/data/jobs
+      - ./archive:/archive
+    restart: unless-stopped
+
+  sdxl:
+    build:
+      context: .
+      dockerfile: Dockerfile.sdxl
+    command: ["uvicorn", "app.sdxl_service:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1"]
+    environment:
+      SDXL_MODEL_ID: segmind/SSD-1B
+      SDXL_CPU_OFFLOAD: "false"
+      SDXL_GUIDANCE_SCALE: "9"
+      SDXL_MAX_EDGE: "768"
+      SDXL_STEPS: "20"
+      PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+      HF_HOME: /models
+    ports:
+      - "8001:8001"
+    gpus: all
+    shm_size: 2gb
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health/ready', timeout=3)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    volumes:
+      - ./models:/models
+    restart: unless-stopped
+
+volumes:
+  artifacts:
+  redis-data:

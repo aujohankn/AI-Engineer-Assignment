@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "creative-variant-service"
+version = "0.1.0"
+description = "Asynchronous agentic workflow for generating and evaluating marketing creative variants"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "celery[redis]>=5.4,<6",
+  "fastapi>=0.116,<1",
+  "httpx>=0.28,<1",
+  "openai>=2.14,<3",
+  "pillow>=11.3,<13",
+  "pydantic-settings>=2.10,<3",
+  "python-multipart>=0.0.20,<1",
+  "redis>=6.4,<7",
+  "uvicorn[standard]>=0.35,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.4,<9",
+  "pytest-cov>=6.2,<8",
+  "ruff>=0.12,<1",
+]
+sdxl = [
+  "accelerate>=1.10,<2",
+  "diffusers>=0.35,<1",
+  "safetensors>=0.6,<1",
+  "transformers>=4.55,<6",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+addopts = "-q --disable-warnings --cov=app --cov-report=term-missing --cov-fail-under=90"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
