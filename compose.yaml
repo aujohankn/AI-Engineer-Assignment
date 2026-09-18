@@ -33,12 +33,15 @@ services:
   worker:
     build: .
     command: ["celery", "-A", "app.worker:celery_app", "worker", "--loglevel=INFO", "--concurrency=1"]
+    env_file:
+      - .env.local
     environment:
       REDIS_URL: redis://redis:6379/0
       ARTIFACT_ROOT: /data/jobs
       ARCHIVE_ROOT: /archive
       IMAGE_PROVIDER: sdxl
-      EVALUATION_PROVIDER: local
+      EVALUATION_PROVIDER: gemini
+      GEMINI_MODEL: gemini-3.8-flash
       SDXL_API_URL: http://sdxl:8001
       SDXL_API_TIMEOUT_SECONDS: "600"
     depends_on:

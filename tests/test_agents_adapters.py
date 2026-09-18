@@ -112,6 +112,41 @@ def test_build_workflow_requires_key(tmp_path: Path) -> None:
         )
 
 
+def test_build_workflow_requires_gemini_key(tmp_path: Path) -> None:
+    with pytest.raises(RuntimeError, match="GEMINI_API_KEY"):
+        agents.build_workflow(
+            Settings(
+                gemini_api_key=None,
+                artifact_root=tmp_path,
+                evaluation_provider="gemini",
+            )
+        )
+
+
+def test_build_workflow_wires_gemini_evaluator(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import app.gemini as gemini
+
+    class FakeGeminiEvaluator:
+        def __init__(self, api_key: str, model: str) -> None:
+            self.api_key = api_key
+            self.model = model
+
+    monkeypatch.setattr(gemini, "GeminiVariantEvaluator", FakeGeminiEvaluator)
+    workflow = agents.build_workflow(
+        Settings(
+            gemini_api_key="not-a-real-key",
+            gemini_model="gemini-test",
+            artifact_root=tmp_path,
+            evaluation_provider="gemini",
+        )
+    )
+
+    assert workflow.evaluator.api_key == "not-a-real-key"
+    assert workflow.evaluator.model == "gemini-test"
+
+
 def test_build_workflow_wires_adapters(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     fake_client = object()
     captured: dict[str, object] = {}

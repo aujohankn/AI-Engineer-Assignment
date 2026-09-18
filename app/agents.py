@@ -197,6 +197,12 @@ def build_workflow(settings: Settings) -> CreativeWorkflow:
         from app.local_models import LocalImageEvaluator
 
         evaluator: VariantEvaluator = LocalImageEvaluator(settings)
+    elif settings.evaluation_provider == "gemini":
+        from app.gemini import GeminiVariantEvaluator
+
+        if not settings.gemini_api_key:
+            raise RuntimeError("GEMINI_API_KEY is required for Gemini evaluation")
+        evaluator = GeminiVariantEvaluator(settings.gemini_api_key, settings.gemini_model)
     else:
         assert client is not None
         evaluator = OpenAIVariantEvaluator(client, settings.evaluation_model)

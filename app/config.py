@@ -18,10 +18,12 @@ class Settings(BaseSettings):
     artifact_root: Path = Path("data/jobs")
     archive_root: Path = Path("archive")
     openai_api_key: str | None = Field(default=None, repr=False)
+    gemini_api_key: str | None = Field(default=None, repr=False)
     image_provider: Literal["sdxl", "openai"] = "sdxl"
-    evaluation_provider: Literal["local", "openai"] = "local"
+    evaluation_provider: Literal["local", "openai", "gemini"] = "local"
     image_model: str = "gpt-image-2"
     evaluation_model: str = "gpt-5.5"
+    gemini_model: str = "gemini-3.8-flash"
     sdxl_api_url: str = "http://sdxl:8001"
     sdxl_api_timeout_seconds: float = Field(default=600, ge=1, le=3600)
     sdxl_model_id: str = "stabilityai/stable-diffusion-xl-base-1.0"

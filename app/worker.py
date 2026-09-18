@@ -4,6 +4,7 @@ from redis import Redis
 
 from app.agents import build_workflow
 from app.config import get_settings
+from app.gemini import GeminiTransientError
 from app.models import JobStatus
 from app.store import SyncRedisJobStore
 
@@ -76,6 +77,13 @@ def process_job(self, job_id: str) -> dict[str, str | int]:
             raise self.retry(exc=exc, countdown=2 ** (self.request.retries + 1)) from exc
         job.status = JobStatus.failed
         job.error = f"model provider temporarily unavailable: {type(exc).__name__}"
+        store.save(job)
+        raise
+    except GeminiTransientError as exc:
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=exc, countdown=2 ** (self.request.retries + 1)) from exc
+        job.status = JobStatus.failed
+        job.error = "Gemini API remained unavailable after retries"
         store.save(job)
         raise
     except Exception as exc:
